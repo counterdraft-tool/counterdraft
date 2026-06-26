@@ -89,6 +89,8 @@
         <button class="link" type="button" onclick="loadSample()">Load sample</button>
       </div>
     </div>
+    <label for="license">License key</label>
+    <input id="license" type="text" placeholder="Paste the license key from your purchase email" style="width:100%;font-family:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:10px;color:var(--ink);background:var(--paper);margin-bottom:14px">
     <label for="text">Contract text</label>
     <textarea id="text" placeholder="Paste the full contract text here..."></textarea>
     <button class="primary" id="run" style="margin-top:12px" onclick="runAudit()">Run audit</button>
@@ -126,7 +128,7 @@
     if(d && d.ai_configured === false){
       var b=document.getElementById('ai-banner');
       b.classList.remove('hidden');
-      b.textContent='Demo mode: no AI key configured on the server yet, so results are sample output. Set ANTHROPIC_API_KEY to enable real audits.';
+      b.textContent='Note: AI key not configured on the server yet.';
     }
   }).catch(function(){});
 
@@ -135,17 +137,19 @@
   function runAudit(){
     var text=document.getElementById('text').value.trim();
     var juris=document.getElementById('juris').value;
+    var key=document.getElementById('license').value.trim();
     var st=document.getElementById('status');
     var btn=document.getElementById('run');
     if(text.length<40){st.textContent='Please paste a longer contract first.';return;}
+    if(!key){st.innerHTML='Please paste your license key. <a href="index.html#pricing">Get one here</a>.';return;}
     btn.disabled=true; st.innerHTML='<span class="spin"></span>Analyzing the contract — this can take 20–40 seconds...';
     document.getElementById('out').classList.add('hidden');
     fetch('/api/audit',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({text:text,jurisdiction:juris})})
+      body:JSON.stringify({text:text,jurisdiction:juris,license_key:key})})
     .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});})
     .then(function(res){
       btn.disabled=false;
-      if(!res.ok){st.textContent=(res.j&&res.j.error)||'Something went wrong.';return;}
+      if(!res.ok){var m=(res.j&&res.j.error)||'Something went wrong.';if(res.j&&res.j.need_license){m+=' <a href="index.html#pricing">Buy an audit</a>';}st.innerHTML=m;return;}
       render(res.j); st.textContent='';
     })
     .catch(function(e){btn.disabled=false;st.textContent='Network error: '+e;});
